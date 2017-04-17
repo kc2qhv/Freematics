@@ -38,6 +38,10 @@ uint32_t UTC = 0;
 byte accCount = 0; // count of accelerometer readings
 long accSum[3] = {0}; // sum of accelerometer data
 int accCal[3] = {0}; // calibrated reference accelerometer data
+long gyrSum[3] = {0}; // sum of accelerometer data
+int gyrCal[3] = {0}; // calibrated reference accelerometer data
+long magSum[3] = {0}; // sum of accelerometer data
+int magCal[3] = {0}; // calibrated reference accelerometer data
 byte deviceTemp; // device temperature (celcius degree)
 #endif
 
@@ -50,13 +54,14 @@ class ONE : public COBDSPI, public CDataLogger
 {
 public:
     ONE():state(0) {}
+    
     void setup()
     {
         state = 0;
 
-        delay(500);
+        delay(5000);
         byte ver = begin();
-        Serial.print("Firmware Ver. ");
+        Serial.print("FWV ");
         Serial.println(ver);
 
 #if USE_MPU6050 || USE_MPU9250
@@ -64,9 +69,9 @@ public:
         Serial.print("MEMS ");
         if (memsInit()) {
           state |= STATE_MEMS_READY;
-          Serial.println("OK");
+          Serial.println(PW);
         } else {
-          Serial.println("NO");
+          Serial.println(NW);
         }
 #endif
 
@@ -75,26 +80,27 @@ public:
         uint16_t volsize = initSD();
         if (volsize) {
           Serial.print(volsize);
-          Serial.println("MB");
+          Serial.print("MB ");
+          Serial.println(PW);
         } else {
-          Serial.println("NO");
+          Serial.println(NW);
         }
 #endif
 
         Serial.print("OBD ");
         if (init()) {
-          Serial.println("OK");
+          Serial.println(PW);
         } else {
-          Serial.println("NO");
+          Serial.println(NW);
           reconnect();
         }
         state |= STATE_OBD_READY;
 
-#if 0
+#if GET_VIN
         // retrieve VIN
         char buffer[128];
         if ((state & STATE_OBD_READY) && getVIN(buffer, sizeof(buffer))) {
-          Serial.print("VIN:");
+          Serial.print("VIN ");
           Serial.println(buffer);
         }
 #endif
@@ -103,9 +109,9 @@ public:
         Serial.print("GPS ");
         if (initGPS(GPS_SERIAL_BAUDRATE)) {
           state |= STATE_GPS_FOUND;
-          Serial.println("OK");
+          Serial.println(PW);
         } else {
-          Serial.println("NO");
+          Serial.println(NW);
         }
 #endif
 
@@ -113,6 +119,7 @@ public:
         calibrateMEMS();
 #endif
     }
+    
 #if USE_GPS
     void logGPSData()
     {
@@ -122,10 +129,11 @@ public:
         byte n = getGPSRawData(buf, sizeof(buf));
         if (n) {
             dataTime = millis();
-            // strip heading $GPS and ending \r\n
-            logData(buf + 4, n - 6);
+            // strip heading $ and ending \r\n
+            logData(buf + 1, n - 3);
         }
 #endif
+
 #if LOG_GPS_PARSED_DATA
         // issue the command to get parsed GPS data
         GPS_DATA gd = {0};
@@ -154,6 +162,7 @@ public:
 #endif
     }
 #endif
+
 #if ENABLE_DATA_LOG
     uint16_t initSD()
     {
@@ -178,6 +187,7 @@ public:
           return 0;
         }
     }
+    
     void flushData()
     {
       // flush SD data every 1KB
@@ -194,18 +204,22 @@ public:
         }
     }
 #endif
+
     void reconnect()
     {
-        Serial.println("Reconnecting");
+        Serial.println("OBD RECONN");
         // try to re-connect to OBD
         if (init()) return;
 #if ENABLE_DATA_LOG
         closeFile();
 #endif
+
+#if USE_GPS
         // turn off GPS power
         initGPS(0);
+#endif
         state &= ~(STATE_OBD_READY | STATE_GPS_READY);
-        Serial.println("Standby");
+        Serial.println("OBD STANDBY");
         // put OBD chips into low power mode
         enterLowPowerMode();
         
@@ -227,6 +241,8 @@ public:
           }
           // check movement
           if (motion > START_MOTION_THRESHOLD) {
+            
+            Serial.print("MTN ");
             Serial.println(motion);
             // try OBD reading
 #endif
@@ -250,6 +266,7 @@ public:
         setup();
 #endif
     }
+    
 #if USE_MPU6050 || USE_MPU9250
     void calibrateMEMS()
     {
@@ -258,24 +275,40 @@ public:
         accCal[1] = accSum[1] / accCount;
         accCal[2] = accSum[2] / accCount;
     }
+    
     void readMEMS()
     {
         // load accelerometer and temperature data
         int16_t acc[3] = {0};
+        int16_t gyr[3] = {0};
+        int16_t mag[3] = {0};
         int16_t temp; // device temperature (in 0.1 celcius degree)
-        memsRead(acc, 0, 0, &temp);
+        memsRead(acc, gyr, mag, &temp);
         if (accCount >= 250) {
           accSum[0] >>= 1;
           accSum[1] >>= 1;
           accSum[2] >>= 1;
+          gyrSum[0] >>= 1;
+          gyrSum[1] >>= 1;
+          gyrSum[2] >>= 1;
+          magSum[0] >>= 1;
+          magSum[1] >>= 1;
+          magSum[2] >>= 1;
           accCount >>= 1;
         }
         accSum[0] += acc[0];
         accSum[1] += acc[1];
         accSum[2] += acc[2];
+        gyrSum[0] += gyr[0];
+        gyrSum[1] += gyr[1];
+        gyrSum[2] += gyr[2];
+        magSum[0] += mag[0];
+        magSum[1] += mag[1];
+        magSum[2] += mag[2];
         accCount++;
         deviceTemp = temp / 10;
     }
+    
     void dataIdleLoop()
     {
       // do something while waiting for data on SPI
@@ -302,7 +335,7 @@ void loop()
     if (!(one.state & STATE_FILE_READY) && (one.state & STATE_SD_READY)) {
       if (one.state & STATE_GPS_FOUND) {
         // GPS connected
-        Serial.print("File ");
+        Serial.print("Fil ");
         if (one.state & STATE_GPS_READY) {
           uint32_t dateTime = (uint32_t)MMDD * 10000 + UTC / 10000;
           if (one.openFile(dateTime) != 0) {
@@ -310,7 +343,7 @@ void loop()
             MMDD = 0;
             one.state |= STATE_FILE_READY;
           } else {
-            Serial.println("File error");
+            Serial.println("FilErr");
           }
         }
       } else {
@@ -320,14 +353,14 @@ void loop()
           one.state |= STATE_FILE_READY;
           Serial.println(index);
         } else {
-          Serial.println("File error");
+          Serial.println("FilErr");
         }
       }
     }
 #endif
     if (one.state & STATE_OBD_READY) {
         byte pids[]= {0, PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
-        byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_DISTANCE};
+        byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_DISTANCE, PID_ENGINE_OIL_TEMP, PID_ENGINE_FUEL_RATE};
         int values[sizeof(pids)];
         static byte index2 = 0;
         pids[0] = pids2[index2 = (index2 + 1) % sizeof(pids2)];
@@ -358,6 +391,8 @@ void loop()
     if ((one.state & STATE_MEMS_READY) && accCount) {
        // log the loaded MEMS data
       one.logData(PID_ACC, accSum[0] / accCount / ACC_DATA_RATIO, accSum[1] / accCount / ACC_DATA_RATIO, accSum[2] / accCount / ACC_DATA_RATIO);
+      one.logData(PID_GYRO, gyrSum[0] / accCount / GYRO_DATA_RATIO, gyrSum[1] / accCount / GYRO_DATA_RATIO, gyrSum[2] / accCount / GYRO_DATA_RATIO);
+      one.logData(PID_COMPASS, magSum[0] / accCount / COMPASS_DATA_RATIO, magSum[1] / accCount / COMPASS_DATA_RATIO, magSum[2] / accCount / COMPASS_DATA_RATIO);
     }
 #endif
 #if USE_GPS
@@ -370,8 +405,9 @@ void loop()
     uint32_t logsize = sdfile.size();
     if (logsize > 0) {
       one.flushData();
+      Serial.println("SDF ");
       Serial.print(sdfile.size());
-      Serial.println(" bytes");
+      Serial.println("B");
     }
 #endif
 }

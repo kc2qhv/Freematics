@@ -26,6 +26,7 @@ public:
         cacheBytes = 0;
 #endif
     }
+    
     void initSender()
     {
 #if ENABLE_DATA_OUT
@@ -46,6 +47,7 @@ public:
       buf[n++] = ',';      
       return n;
     }
+    
     void record(const char* buf, byte len)
     {
 #if ENABLE_DATA_LOG
@@ -58,6 +60,7 @@ public:
 #endif
         m_lastDataTime = dataTime;
     }
+    
     void dispatch(const char* buf, byte len)
     {
 #if ENABLE_DATA_CACHE
@@ -73,16 +76,19 @@ public:
         //byte n = genTimestamp(tmp, dataTime >= m_lastDataTime + 100);
         //Serial.write(tmp, n);
 #endif
+
 #if ENABLE_DATA_OUT
         Serial.write((uint8_t*)buf, len);
         Serial.println();
 #endif
     }
+
     void logData(const char* buf, byte len)
     {
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logData(uint16_t pid)
     {
         char buf[8];
@@ -90,6 +96,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logData(uint16_t pid, int16_t value)
     {
         char buf[16];
@@ -98,6 +105,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logData(uint16_t pid, int32_t value)
     {
         char buf[20];
@@ -106,6 +114,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logData(uint16_t pid, uint32_t value)
     {
         char buf[20];
@@ -114,6 +123,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logData(uint16_t pid, int value1, int value2, int value3)
     {
         char buf[24];
@@ -122,6 +132,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
     void logCoordinate(uint16_t pid, int32_t value)
     {
         char buf[24];
@@ -130,6 +141,7 @@ public:
         dispatch(buf, len);
         record(buf, len);
     }
+    
 #if ENABLE_DATA_LOG
     uint16_t openFile(uint32_t dateTime = 0)
     {
@@ -165,15 +177,18 @@ public:
         }
         return fileIndex;
     }
+    
     void closeFile()
     {
         sdfile.close();
         dataSize = 0;
     }
+    
     void flushFile()
     {
         sdfile.flush();
     }
+    
 #endif
     uint32_t dataTime;
     uint32_t dataSize;
@@ -181,6 +196,7 @@ public:
     char cache[MAX_CACHE_SIZE];
     int cacheBytes;
 #endif
+
 private:
     byte translatePIDName(uint16_t pid, char* text)
     {
