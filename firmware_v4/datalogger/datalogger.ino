@@ -405,7 +405,7 @@ void loop()
     uint32_t logsize = sdfile.size();
     if (logsize > 0) {
       one.flushData();
-      Serial.println("SDF ");
+      Serial.print("SDF ");
       Serial.print(sdfile.size());
       Serial.println("B");
     }
