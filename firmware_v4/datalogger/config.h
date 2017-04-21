@@ -24,7 +24,7 @@
 #define STREAM_BAUDRATE 115200
 
 // maximum size per file, a new file will be created on reaching this size
-#define MAX_LOG_FILE_SIZE 1024 /* KB */
+#define MAX_LOG_FILE_SIZE 4096 /* KB */
 
 /**************************************
 * Hardware setup
@@ -48,7 +48,7 @@
 
 // enable(1)/disable(0) GPS module
 #define USE_GPS 1
-#define LOG_GPS_NMEA_DATA 0
+#define LOG_GPS_NMEA_DATA 1
 #define LOG_GPS_PARSED_DATA 1
 
 // GPS parameters

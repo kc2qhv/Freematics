@@ -149,6 +149,7 @@ public:
               logData(PID_GPS_ALTITUDE, gd.alt);
               logData(PID_GPS_SPEED, gd.speed);
               logData(PID_GPS_SAT_COUNT, gd.sat);
+              MMDD = gd.date;
               UTC = gd.time;
               state |= STATE_GPS_READY;
             }
@@ -331,28 +332,13 @@ void loop()
 {
 #if ENABLE_DATA_LOG
     if (!(one.state & STATE_FILE_READY) && (one.state & STATE_SD_READY)) {
-      if (one.state & STATE_GPS_FOUND) {
-        // GPS connected
-        Serial.print("Fil ");
-        if (one.state & STATE_GPS_READY) {
-          // no GPS connected 
-          int index = one.openFile(0);
-          if (index != 0) {
-            one.state |= STATE_FILE_READY;
-            Serial.println(index);
-          } else {
-            Serial.println("FilErr");
-          }
-        }
+      Serial.print("Fil ");
+      int index = one.openFile(MMDD); // if GPS is not installed, always '0' and thus index-only; else DDMMYY-index
+      if (index != 0) {
+        one.state |= STATE_FILE_READY;
+        Serial.println(index);
       } else {
-        // no GPS connected 
-        int index = one.openFile(0);
-        if (index != 0) {
-          one.state |= STATE_FILE_READY;
-          Serial.println(index);
-        } else {
-          Serial.println("FilErr");
-        }
+        Serial.println("Err");
       }
     }
 #endif

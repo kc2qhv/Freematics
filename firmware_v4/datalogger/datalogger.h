@@ -143,7 +143,7 @@ public:
     }
     
 #if ENABLE_DATA_LOG
-    uint16_t openFile(uint32_t dateTime = 0)
+    uint16_t openFile(uint16_t dateTime = 0)
     {
         uint16_t fileIndex;
         char path[20] = "/DATA";
@@ -151,9 +151,15 @@ public:
         dataSize = 0;
         if (SD.exists(path)) {
             if (dateTime) {
+              for (fileIndex = 1; fileIndex; fileIndex++) {
                // using date and time as file name 
-               sprintf(path + 5, "/%08lu.CSV", dateTime);
-               fileIndex = 1;
+                sprintf(path + 5, "/%08lu-%05u.CSV", dateTime, fileIndex);
+                if (!SD.exists(path)) {
+                    break;
+                }
+              }
+              if (fileIndex == 0)
+                  return 0;
             } else {
               // use index number as file name
               for (fileIndex = 1; fileIndex; fileIndex++) {
@@ -166,9 +172,15 @@ public:
                   return 0;
             }
         } else {
+          if (dateTime) {
+            SD.mkdir(path);
+            fileIndex = 1;
+            sprintf(path + 5, "/%08lu-%05u.CSV", dateTime, fileIndex);
+          } else {
             SD.mkdir(path);
             fileIndex = 1;
             sprintf(path + 5, "/DAT%05u.CSV", 1);
+          }
         }
 
         sdfile = SD.open(path, FILE_WRITE);
