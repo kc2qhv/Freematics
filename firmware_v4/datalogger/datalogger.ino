@@ -59,7 +59,7 @@ public:
     {
         state = 0;
 
-        delay(5000);
+        delay(750);
         byte ver = begin();
         Serial.print("FWV ");
         Serial.println(ver);
@@ -100,8 +100,9 @@ public:
         // retrieve VIN
         char buffer[128];
         if ((state & STATE_OBD_READY) && getVIN(buffer, sizeof(buffer))) {
-          Serial.print("VIN ");
-          Serial.println(buffer);
+          // Serial.print("VIN ");
+          // Serial.println(buffer);
+          logData(PID_VIN, buffer);
         }
 #endif
 
@@ -141,21 +142,14 @@ public:
         if (getGPSData(&gd)) {
             dataTime = millis();
             if (gd.time && gd.time != UTC) {
-              byte day = gd.date / 10000;
-              if (MMDD % 100 != day) {
-                logData(PID_GPS_DATE, gd.date);
-              }
+              logData(PID_GPS_DATE, gd.date);
               logData(PID_GPS_TIME, gd.time);
               logData(PID_GPS_LATITUDE, gd.lat);
               logData(PID_GPS_LONGITUDE, gd.lng);
               logData(PID_GPS_ALTITUDE, gd.alt);
               logData(PID_GPS_SPEED, gd.speed);
               logData(PID_GPS_SAT_COUNT, gd.sat);
-              // save current date in MMDD format
-              unsigned int DDMM = gd.date / 100;
               UTC = gd.time;
-              MMDD = (DDMM % 100) * 100 + (DDMM / 100);
-              // set GPS ready flag
               state |= STATE_GPS_READY;
             }
         }
@@ -214,10 +208,8 @@ public:
         closeFile();
 #endif
 
-#if USE_GPS
         // turn off GPS power
         initGPS(0);
-#endif
         state &= ~(STATE_OBD_READY | STATE_GPS_READY);
         Serial.println("OBD STANDBY");
         // put OBD chips into low power mode
@@ -274,6 +266,12 @@ public:
         accCal[0] = accSum[0] / accCount;
         accCal[1] = accSum[1] / accCount;
         accCal[2] = accSum[2] / accCount;
+        gyrCal[0] = gyrSum[0] / accCount;
+        gyrCal[1] = gyrSum[1] / accCount;
+        gyrCal[2] = gyrSum[2] / accCount;
+        magCal[0] = magSum[0] / accCount;
+        magCal[1] = magSum[1] / accCount;
+        magCal[2] = magSum[2] / accCount;
     }
     
     void readMEMS()
@@ -337,11 +335,11 @@ void loop()
         // GPS connected
         Serial.print("Fil ");
         if (one.state & STATE_GPS_READY) {
-          uint32_t dateTime = (uint32_t)MMDD * 10000 + UTC / 10000;
-          if (one.openFile(dateTime) != 0) {
-            Serial.println(dateTime);
-            MMDD = 0;
+          // no GPS connected 
+          int index = one.openFile(0);
+          if (index != 0) {
             one.state |= STATE_FILE_READY;
+            Serial.println(index);
           } else {
             Serial.println("FilErr");
           }
