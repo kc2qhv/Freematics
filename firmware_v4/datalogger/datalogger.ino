@@ -190,12 +190,14 @@ public:
         if (dataSizeKB != lastFileSize) {
             flushFile();
             lastFileSize = dataSizeKB;
+            
 #if MAX_LOG_FILE_SIZE
             if (dataSize >= 1024L * MAX_LOG_FILE_SIZE) {
               closeFile();
               state &= ~STATE_FILE_READY;
             }
 #endif
+
         }
     }
 #endif
@@ -342,6 +344,7 @@ void loop()
       }
     }
 #endif
+
     if (one.state & STATE_OBD_READY) {
         byte pids[]= {0, PID_RPM, PID_SPEED, PID_THROTTLE, PID_ENGINE_LOAD};
         byte pids2[] = {PID_COOLANT_TEMP, PID_INTAKE_TEMP, PID_DISTANCE, PID_ENGINE_OIL_TEMP, PID_ENGINE_FUEL_RATE};
@@ -379,6 +382,7 @@ void loop()
       one.logData(PID_COMPASS, magSum[0] / accCount / COMPASS_DATA_RATIO, magSum[1] / accCount / COMPASS_DATA_RATIO, magSum[2] / accCount / COMPASS_DATA_RATIO);
     }
 #endif
+
 #if USE_GPS
     if (one.state & STATE_GPS_FOUND) {
       one.logGPSData();
