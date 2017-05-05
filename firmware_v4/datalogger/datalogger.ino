@@ -28,20 +28,18 @@
 #define STATE_MEMS_READY 0x10
 #define STATE_FILE_READY 0x20
 
+#if ENABLE_DATA_LOG
 static uint8_t lastFileSize = 0;
-static uint16_t fileIndex = 0;
-
-uint16_t MMDD = 0;
-uint32_t UTC = 0;
+#endif
 
 #if USE_MPU6050 || USE_MPU9250
 byte accCount = 0; // count of accelerometer readings
 long accSum[3] = {0}; // sum of accelerometer data
 int accCal[3] = {0}; // calibrated reference accelerometer data
-long gyrSum[3] = {0}; // sum of accelerometer data
-int gyrCal[3] = {0}; // calibrated reference accelerometer data
-long magSum[3] = {0}; // sum of accelerometer data
-int magCal[3] = {0}; // calibrated reference accelerometer data
+long gyrSum[3] = {0}; // sum of gyroscope data
+int gyrCal[3] = {0}; // calibrated reference gyroscope data
+long magSum[3] = {0}; // sum of compass data
+int magCal[3] = {0}; // calibrated reference compass data
 byte deviceTemp; // device temperature (celcius degree)
 #endif
 
@@ -51,6 +49,7 @@ class ONE : public COBDSPI, public CDataLogger
 #elif USE_MPU9250
 ,public CMPU9250
 #endif
+
 {
 public:
     ONE():state(0) {}
@@ -138,6 +137,8 @@ public:
 #if LOG_GPS_PARSED_DATA
         // issue the command to get parsed GPS data
         GPS_DATA gd = {0};
+        uint16_t MMDD = 0;
+        uint32_t UTC = 0;
         
         if (getGPSData(&gd)) {
             dataTime = millis();
@@ -335,7 +336,7 @@ void loop()
 #if ENABLE_DATA_LOG
     if (!(one.state & STATE_FILE_READY) && (one.state & STATE_SD_READY)) {
       Serial.print("Fil ");
-      int index = one.openFile(MMDD); // if GPS is not installed, always '0' and thus index-only; else DDMMYY-index
+      int index = one.openFile(0);
       if (index != 0) {
         one.state |= STATE_FILE_READY;
         Serial.println(index);
